@@ -511,6 +511,8 @@ class DataFrame(object):
             keys = [math.nan] + keys
         if not dropmissing and ordered_set.has_null:
             keys = [None] + keys
+        if data_type_item.is_datetime or data_type_item.is_timedelta:
+            keys = np.array(keys, dtype=data_type_item.numpy)
         keys = vaex.array_types.convert(keys, array_type)
         if return_inverse:
             return keys, inverse

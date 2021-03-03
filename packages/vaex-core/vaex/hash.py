@@ -43,6 +43,10 @@ def ordered_set_type_from_dtype(dtype, transient=True):
         postfix = str(dtype)
         if postfix == '>f8':
             postfix = 'float64'
+    if dtype.is_datetime:
+        postfix = "uint64"
+    if dtype.is_timedelta:
+        postfix = "uint64"
     name = 'ordered_set_' + postfix
     return globals()[name]
 
