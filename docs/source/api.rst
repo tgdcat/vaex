@@ -105,7 +105,7 @@ Caching
 ~~~~~~~
 
 .. automodule:: vaex.cache
-    :members: is_on, off, get, set, memory_infinite, disk_infinite, redis
+    :members: is_on, off, get, set, memory, memory_infinite, disk, disk_infinite, redis
     :undoc-members:
     :show-inheritance:
 

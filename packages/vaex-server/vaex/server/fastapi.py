@@ -32,7 +32,7 @@ global_lock = asyncio.Lock()
 logger = logging.getLogger("vaex.server")
 VAEX_FAVICON = 'https://vaex.io/img/logos/vaex_alt.png'
 HERE = pathlib.Path(__file__).parent
-use_graphql = vaex.utils.get_env_type(bool, 'VAEX_SERVER_GRAPHQL', False)
+
 
 
 class ImageResponse(Response):
@@ -118,7 +118,7 @@ async def root():
             'column': list(ds),
             'schema': [{'name': k, 'type': str(vaex.dtype(v))} for k, v in ds.schema().items()]
         })
-    content = content.replace('// DATA', 'app.$data.datasets = %s\n app.$data.graphql = %s' % (json.dumps(data), json.dumps(use_graphql)))
+    content = content.replace('// DATA', 'app.$data.datasets = %s\n app.$data.graphql = %s' % (json.dumps(data), json.dumps(vaex.settings.server.graphql)))
     return content
 
 
@@ -302,16 +302,6 @@ async def add_process_time_header(request: Request, call_next):
 
 
 
-class Settings(BaseSettings):
-    vaex_config_file: str = "vaex-server.json"
-    vaex_add_example: bool = True
-    vaex_config: dict = None
-    class Config:
-        env_file = '.env'
-        env_file_encoding = 'utf-8'
-
-
-
 # used for testing
 class Server(threading.Thread):
     def __init__(self, port, host='localhost', **kwargs):
@@ -377,7 +367,7 @@ class Server(threading.Thread):
         logger.debug("stopped server")
 
 
-for name, path in vaex.settings.webserver.get("datasets", {}).items():
+for name, path in vaex.settings.server.files.items():
     datasets[name] = vaex.open(path).dataset
 
 
@@ -465,5 +455,5 @@ if __name__ == "__main__":
     main()
 else:
     update_service()
-    if use_graphql:
+    if vaex.settings.server.graphql:
         add_graphql()
