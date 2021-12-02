@@ -12,6 +12,17 @@ from enum import Enum
 from .config import ConfigDefault
 
 logger = logging.getLogger("vaex.settings")
+_default_home = vaex.utils.get_vaex_home()
+try:
+    import dotenv
+    has_dotenv = True
+except:
+    has_dotenv = False
+if has_dotenv:
+    from pydantic.env_settings import read_env_file
+    envs = read_env_file(ConfigDefault.env_file)
+    print(envs)
+    _default_home = envs.get('vaex_home', _default_home)
 
 # we may want to use this
 # class ByteAmount(str):
@@ -60,16 +71,8 @@ class Display(BaseSettings):
     """How a dataframe displays"""
     max_columns: int = Field(200, title="How many column to display when printing out a dataframe")
     max_rows: int = Field(10, title="How many rows to print out before showing the first and last rows")
-    class Config:
+    class Config(ConfigDefault):
         env_prefix = 'vaex_display_'
-        env_file = ".env"
-        @classmethod
-        def customise_sources(cls, init_settings, env_settings, file_secret_settings):
-            return (
-                env_settings,
-                file_secret_settings,
-                init_settings,
-            )
 
 
 class Chunk(BaseSettings):
@@ -86,8 +89,10 @@ class CacheCompute(BaseSettings):
     type: Optional[str] = Field(None, env='VAEX_CACHE', title="Type of cache, e.g. 'memory_infinite', 'memory', 'disk', 'redis', or a multilevel cache, e.g. 'memory,disk'")
     disk_size_limit: str = Field('10GB', title='Maximum size for cache on disk, e.g. 10GB, 500MB')
     memory_size_limit: str = Field('1GB', title='Maximum size for cache in memory, e.g. 1GB, 500MB')
+    path: Optional[str] = Field(env="VAEX_CACHE_PATH", title="Storage location for compute results. Defaults to `${VAEX_HOME}/.cache`")
+
     class Config(ConfigDefault):
-        env_prefix = 'vaex_cache'
+        env_prefix = 'vaex_cache_'
 
 
 class AsyncEnum(str, Enum):
@@ -104,40 +109,41 @@ if has_server:
     import vaex.server.settings
 
 
-class Paths(BaseSettings):
-    """Paths/directories configuration"""
-    home: Optional[str] = Field(default_factory=vaex.utils.get_vaex_home, env="VAEX_PATH_HOME", title="Home directory for vaex, which defaults to `$HOME/.vaex`, "\
-        " If both `$VAEX_PATH_HOME` and `$HOME` are not define, the current working directory is used. (Note that this setting cannot be configured from the vaex home directory itself).")
-    cache_compute: Optional[str] = Field(env="VAEX_PATH_CACHE_COMPUTE", title="Storage location for compute results. Defaults to `${VAEX_PATH_HOME}/cache`")
-    cache_fs: Optional[str] = Field(env="VAEX_PATH_CACHE_FS", title="Storage location for caching files from remote file systems. Defaults to `${VAEX_PATH_HOME}/file-cache/`")
-    data: Optional[str] = Field(env="VAEX_PATH_DATA", title="Storage location for data files, like vaex.example(). Defaults to `${VAEX_PATH_HOME}/data/`")
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        if self.cache_compute is None:
-            self.cache_compute = os.path.join(self.home, "cache")
-        if self.cache_fs is None:
-            self.cache_fs = os.path.join(self.home, "file-cache")
-        if self.data is None:
-            self.data = os.path.join(self.home, "data")
+class FileSystem(BaseSettings):
+    """Filesystem configuration"""
+    path: str = Field(os.path.join(_default_home, "file-cache"), env="VAEX_FS_PATH", title="Storage location for caching files from remote file systems. Defaults to `${VAEX_HOME}/file-cache/`")
 
     class Config(ConfigDefault):
-        env_prefix = 'vaex_path_'
+        env_prefix = 'vaex_fs_'
+
+class Data(BaseSettings):
+    """Data configuration"""
+    path: str = Field(os.path.join(_default_home, "file-cache"), env="VAEX_DATA_PATH", title="Storage location for data files, like vaex.example(). Defaults to `${VAEX_HOME}/data/`")
+
+    class Config(ConfigDefault):
+        env_prefix = 'vaex_data_'
 
 
 class Settings(BaseSettings):
     """General settings for vaex"""
+    aliases: Optional[dict] = Field(title='Aliases to be used for vaex.open', default_factory=dict)
     async_: AsyncEnum = Field('nest', env='VAEX_ASYNC', title="How to run async code in the local executor", min_length=2)
-    aliases: Optional[dict] = Field(title='Aliases to be used for vaex.open', default_factory=list)
-    cache_compute = CacheCompute()
-    chunk: Chunk = Chunk()
-    display: Display = Display()
-    memory_tracker = MemoryTracker()
-    task_tracker = TaskTracker()
+    home: str = Field(_default_home, env="VAEX_HOME", title="Home directory for vaex, which defaults to `$HOME/.vaex`, "\
+        " If both `$VAEX_HOME` and `$HOME` are not defined, the current working directory is used. (Note that this setting cannot be configured from the vaex home directory itself).")
     mmap: bool = Field(True, title="Experimental to turn off, will avoid using memory mapping if set to False")
+    process_count: Optional[int] = Field(title="Number of processes to use for multiprocessing (e.g. apply), defaults to thread_count setting", gt=0)
     thread_count: Optional[int] = Field(env='VAEX_NUM_THREADS', title="Number of threads to use for computations, defaults to multiprocessing.cpu_count()", gt=0)
     thread_count_io: Optional[int] = Field(env='VAEX_NUM_THREADS_IO', title="Number of threads to use for IO, defaults to thread_count_io + 1", gt=0)
-    process_count: Optional[int] = Field(title="Number of processes to use for multiprocessing (e.g. apply), defaults to thread_count setting", gt=0)
-    paths: Paths = Field(Paths(), title="Configuration of paths")
+
+
+    cache_compute = CacheCompute()
+    chunk: Chunk = Chunk()
+    data = Data()
+    display: Display = Display()
+    fs: FileSystem = FileSystem()
+    memory_tracker = MemoryTracker()
+    task_tracker = TaskTracker()
+
     if has_server:
         server: vaex.server.settings.Settings = vaex.server.settings.Settings()
 
@@ -145,13 +151,16 @@ class Settings(BaseSettings):
         super().__init__(**kwargs)
         # dynamic defaults
         if self.thread_count is None:
-            self.thread_count = multiprocessing.cpu_count()            
+            self.thread_count = multiprocessing.cpu_count()
+            self.__fields__['thread_count'].default = self.thread_count
         if self.thread_count_io is None:
             self.thread_count_io = self.thread_count + 1
+            self.__fields__['thread_count_io'].default = self.thread_count
         if self.process_count is None:
             self.process_count = self.thread_count
+            self.__fields__['process_count'].default = self.thread_count
+
     class Config(ConfigDefault):
-        # extra = 'allow'
         use_enum_values = True
         allow_population_by_field_name = True
         allow_population_by_alias = True
@@ -176,7 +185,6 @@ if has_server:
 display = main.display
 cache_compute = main.cache_compute
 aliases = main.aliases
-paths = main.paths
 
 
 def save(exclude_defaults=True, verbose=False):
@@ -288,6 +296,9 @@ def _main(args):
             print(main.schema_json(indent=2))
         elif type == "yaml":
             values = main.dict(by_alias=True)
+            vaex.utils.yaml_dump(sys.stdout, values)
+        elif type == "yaml-diff":
+            values = main.dict(by_alias=True, exclude_defaults=True)
             vaex.utils.yaml_dump(sys.stdout, values)
         elif type == "json":
             values = main.dict(by_alias=True)

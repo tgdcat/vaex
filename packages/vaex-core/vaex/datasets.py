@@ -5,7 +5,7 @@ import vaex as vx
 import vaex.settings
 import os
 # data_dir = "/tmp/vaex/data"
-data_dir = vaex.settings.paths.data
+data_dir = vaex.settings.data.path
 
 try:
     from urllib import urlretrieve  # py2
