@@ -29,7 +29,7 @@ def load_iris():
 
 
 def _iris(name, iris_previous, N):
-    filename = os.path.join(vaex.settings.paths.data, name + '.hdf5')
+    filename = os.path.join(vaex.settings.data.path, name + '.hdf5')
     if os.path.exists(filename):
         return vaex.open(filename)
     else:
