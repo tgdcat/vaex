@@ -170,7 +170,7 @@ def memory_infinite(clear=False):
 
 
 @_with_cleanup
-def memory(maxsize=vaex.settings.cache_compute.memory_size_limit, classname="LRUCache", clear=False):
+def memory(maxsize=vaex.settings.cache.memory_size_limit, classname="LRUCache", clear=False):
     """Sets a memory cache using cachetools (https://cachetools.readthedocs.io/).
 
     Calling multiple times with clear=False will keep the current cache (useful in notebook usage).
@@ -197,7 +197,7 @@ def memory(maxsize=vaex.settings.cache_compute.memory_size_limit, classname="LRU
 
 
 @_with_cleanup
-def disk(clear=False, size_limit=vaex.settings.cache_compute.disk_size_limit, eviction_policy="least-recently-stored"):
+def disk(clear=False, size_limit=vaex.settings.cache.disk_size_limit, eviction_policy="least-recently-stored"):
     """Stored cached values using the diskcache library.
 
     See configuration details at `configuration of cache <conf.html#disk-size-limit>`_. and `configuration of paths <conf.html#cache-compute>`_
@@ -212,7 +212,7 @@ def disk(clear=False, size_limit=vaex.settings.cache_compute.disk_size_limit, ev
     size_limit = parse_bytes(size_limit)
     global cache
     old_cache = cache
-    path = vaex.settings.paths.cache_compute
+    path = vaex.settings.cache.path
     if clear:
         try:
             log.debug(f"Clearing disk cache: {path}")
@@ -490,5 +490,5 @@ def _memoize(f=None, key_function=None, type='computed', delay=False):
         return wrapper_top()
 
 
-if vaex.settings.cache_compute.type:
-    on(vaex.settings.cache_compute.type)
+if vaex.settings.cache.type:
+    on(vaex.settings.cache.type)

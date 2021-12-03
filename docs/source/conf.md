@@ -51,4 +51,4 @@ When updating `vaex/settings.py`, run the `vaex settings watch` to generate this
 
 <!-- autogenerate markdown below -->
 
-If you see this you should run `vaex settings watch` or `vaex settings docs`.
+If you see this you should run `vaex settings watch` or `vaex settings docgen`.

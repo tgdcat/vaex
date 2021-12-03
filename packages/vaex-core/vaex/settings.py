@@ -21,7 +21,6 @@ except:
 if has_dotenv:
     from pydantic.env_settings import read_env_file
     envs = read_env_file(ConfigDefault.env_file)
-    print(envs)
     _default_home = envs.get('vaex_home', _default_home)
 
 # we may want to use this
@@ -84,12 +83,12 @@ class Chunk(BaseSettings):
         env_prefix = 'vaex_chunk_'
 
 
-class CacheCompute(BaseSettings):
+class Cache(BaseSettings):
     """Setting for caching of computation or task results, see the [API](api.html#module-vaex.cache) for more details."""
     type: Optional[str] = Field(None, env='VAEX_CACHE', title="Type of cache, e.g. 'memory_infinite', 'memory', 'disk', 'redis', or a multilevel cache, e.g. 'memory,disk'")
     disk_size_limit: str = Field('10GB', title='Maximum size for cache on disk, e.g. 10GB, 500MB')
     memory_size_limit: str = Field('1GB', title='Maximum size for cache in memory, e.g. 1GB, 500MB')
-    path: Optional[str] = Field(env="VAEX_CACHE_PATH", title="Storage location for compute results. Defaults to `${VAEX_HOME}/.cache`")
+    path: Optional[str] = Field(env="VAEX_CACHE_PATH", title="Storage location for cache results. Defaults to `${VAEX_HOME}/.cache`")
 
     class Config(ConfigDefault):
         env_prefix = 'vaex_cache_'
@@ -136,7 +135,7 @@ class Settings(BaseSettings):
     thread_count_io: Optional[int] = Field(env='VAEX_NUM_THREADS_IO', title="Number of threads to use for IO, defaults to thread_count_io + 1", gt=0)
 
 
-    cache_compute = CacheCompute()
+    cache = Cache()
     chunk: Chunk = Chunk()
     data = Data()
     display: Display = Display()
@@ -183,8 +182,10 @@ main = Settings(**_default_values)
 if has_server:
     server = main.server
 display = main.display
-cache_compute = main.cache_compute
+fs = main.fs
+cache = main.cache
 aliases = main.aliases
+data = main.data
 
 
 def save(exclude_defaults=True, verbose=False):
@@ -245,10 +246,12 @@ def _to_md(cls, f=sys.stdout):
             Chunk: 'main.chunk',
             Display: 'display',
             vaex.server.settings.Settings: 'server',
-            CacheCompute: 'cache',
+            Cache: 'cache',
             MemoryTracker: 'main.memory_tracker',
             TaskTracker: 'main.task_tracker',
-            Paths: 'paths',
+            Cache: 'cache',
+            FileSystem: 'fs',
+            Data: 'data',
         }[cls]
         pyvar = f'vaex.setting.{flat}.{pyname}'
         printf(f'Python setting `{pyvar}`')
