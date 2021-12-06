@@ -401,7 +401,6 @@ def update_service(dfs=None):
 
 
 def main(argv=sys.argv):
-    global use_graphql
     import uvicorn
     import argparse
     parser = argparse.ArgumentParser(argv[0])
@@ -412,7 +411,7 @@ def main(argv=sys.argv):
     parser.add_argument("--port", help="port to listen on (default: %(default)s)", type=int, default=8081)
     parser.add_argument('--verbose', '-v', action='count', help='show more info', default=2)
     parser.add_argument('--quiet', '-q', action='count', help="less info", default=0)
-    parser.add_argument('--graphql', default=use_graphql, action='store_true', help="Add graphql endpoint")
+    parser.add_argument('--graphql', default=vaex.settings.server.graphql, action='store_true', help="Add graphql endpoint")
     config = parser.parse_args(argv[1:])
 
     verbosity = ["ERROR", "WARNING", "INFO", "DEBUG"]
