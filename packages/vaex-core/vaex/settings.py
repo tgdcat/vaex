@@ -117,7 +117,7 @@ class FileSystem(BaseSettings):
 
 class Data(BaseSettings):
     """Data configuration"""
-    path: str = Field(os.path.join(_default_home, "file-cache"), env="VAEX_DATA_PATH", title="Storage location for data files, like vaex.example(). Defaults to `${VAEX_HOME}/data/`")
+    path: str = Field(os.path.join(_default_home, "data"), env="VAEX_DATA_PATH", title="Storage location for data files, like vaex.example(). Defaults to `${VAEX_HOME}/data/`")
 
     class Config(ConfigDefault):
         env_prefix = 'vaex_data_'
